@@ -33,7 +33,12 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: 'spa'
     });
-    fastify.use(vite.middlewares);
+    fastify.use((req: any, res: any, next: any) => {
+      if (req.url && (req.url.startsWith('/api') || req.url.startsWith('/api/'))) {
+        return next();
+      }
+      vite.middlewares(req, res, next);
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     await fastify.register(fastifyStatic, {
@@ -41,7 +46,11 @@ async function startServer() {
       prefix: '/'
     });
     fastify.setNotFoundHandler((request, reply) => {
-      reply.sendFile('index.html');
+      if (request.url.startsWith('/api')) {
+        reply.status(404).send({ success: false, error: 'Endpoint da API não encontrado' });
+      } else {
+        reply.sendFile('index.html');
+      }
     });
   }
 

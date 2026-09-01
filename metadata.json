@@ -1,0 +1,6 @@
+{
+  "name": "Painel de Beneficiario BPC do recife",
+  "description": "Painel de Beneficiários do BPC (Benefício de Prestação Continuada) do Recife com backend Fastify, conexão MySQL e controle de usuários, papéis e permissões.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

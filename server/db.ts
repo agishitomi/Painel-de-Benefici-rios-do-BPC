@@ -50,76 +50,73 @@ export interface BeneficiarioBPC {
 }
 
 // SQL DDL statements for MySQL
-export const MYSQL_SCHEMA_DDL = `
--- ==========================================================
--- Banco de Dados: Painel de Beneficiário BPC do Recife
--- Entidades: usuarios, papeis, permissoes, usuario_papel, papel_permissao
--- ==========================================================
+export const TABLE_DDL_STATEMENTS = [
+  // 1. Tabela: usuarios
+  `CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    senha VARCHAR(255) NOT NULL,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
--- 1. Tabela: usuarios
-CREATE TABLE IF NOT EXISTS usuarios (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  senha VARCHAR(255) NOT NULL,
-  ativo BOOLEAN DEFAULT TRUE,
-  data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // 2. Tabela: papeis
+  `CREATE TABLE IF NOT EXISTS papeis (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL UNIQUE,
+    descricao TEXT,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
--- 2. Tabela: papeis
-CREATE TABLE IF NOT EXISTS papeis (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(100) NOT NULL UNIQUE,
-  descricao TEXT,
-  data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // 3. Tabela: permissoes
+  `CREATE TABLE IF NOT EXISTS permissoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL UNIQUE,
+    descricao TEXT,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
--- 3. Tabela: permissoes
-CREATE TABLE IF NOT EXISTS permissoes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(100) NOT NULL UNIQUE,
-  descricao TEXT,
-  data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // 4. Tabela associativa: usuario_papel
+  `CREATE TABLE IF NOT EXISTS usuario_papel (
+    usuario_id INT NOT NULL,
+    papel_id INT NOT NULL,
+    PRIMARY KEY (usuario_id, papel_id),
+    CONSTRAINT fk_up_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_up_papel FOREIGN KEY (papel_id) REFERENCES papeis(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
--- 4. Tabela associativa: usuario_papel
-CREATE TABLE IF NOT EXISTS usuario_papel (
-  usuario_id INT NOT NULL,
-  papel_id INT NOT NULL,
-  PRIMARY KEY (usuario_id, papel_id),
-  CONSTRAINT fk_up_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  CONSTRAINT fk_up_papel FOREIGN KEY (papel_id) REFERENCES papeis(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // 5. Tabela associativa: papel_permissao
+  `CREATE TABLE IF NOT EXISTS papel_permissao (
+    papel_id INT NOT NULL,
+    permissao_id INT NOT NULL,
+    PRIMARY KEY (papel_id, permissao_id),
+    CONSTRAINT fk_pp_papel FOREIGN KEY (papel_id) REFERENCES papeis(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pp_permissao FOREIGN KEY (permissao_id) REFERENCES permissoes(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
--- 5. Tabela associativa: papel_permissao
-CREATE TABLE IF NOT EXISTS papel_permissao (
-  papel_id INT NOT NULL,
-  permissao_id INT NOT NULL,
-  PRIMARY KEY (papel_id, permissao_id),
-  CONSTRAINT fk_pp_papel FOREIGN KEY (papel_id) REFERENCES papeis(id) ON DELETE CASCADE,
-  CONSTRAINT fk_pp_permissao FOREIGN KEY (permissao_id) REFERENCES permissoes(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  // 6. Tabela de Beneficiários BPC do Recife (Dados do Sistema)
+  `CREATE TABLE IF NOT EXISTS beneficiarios_bpc (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero_beneficio VARCHAR(30) NOT NULL UNIQUE,
+    nis VARCHAR(20) NOT NULL,
+    nome_beneficiario VARCHAR(255) NOT NULL,
+    cpf_mascarado VARCHAR(20) NOT NULL,
+    tipo_beneficio ENUM('BPC_IDOSO', 'BPC_PCD') NOT NULL,
+    bairro_recife VARCHAR(100) NOT NULL,
+    rpa_recife VARCHAR(20) NOT NULL,
+    valor_mensal DECIMAL(10,2) NOT NULL DEFAULT 1412.00,
+    status_cadastral ENUM('REGULAR', 'EM_REVISAO', 'BLOQUEADO', 'PENDENCIA_CADUNICO') DEFAULT 'REGULAR',
+    cras_referencia VARCHAR(150) NOT NULL,
+    data_concessao DATE NOT NULL,
+    data_ultima_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+];
 
--- 6. Tabela de Beneficiários BPC do Recife (Dados do Sistema)
-CREATE TABLE IF NOT EXISTS beneficiarios_bpc (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  numero_beneficio VARCHAR(30) NOT NULL UNIQUE,
-  nis VARCHAR(20) NOT NULL,
-  nome_beneficiario VARCHAR(255) NOT NULL,
-  cpf_mascarado VARCHAR(20) NOT NULL,
-  tipo_beneficio ENUM('BPC_IDOSO', 'BPC_PCD') NOT NULL,
-  bairro_recife VARCHAR(100) NOT NULL,
-  rpa_recife VARCHAR(20) NOT NULL,
-  valor_mensal DECIMAL(10,2) NOT NULL DEFAULT 1412.00,
-  status_cadastral ENUM('REGULAR', 'EM_REVISAO', 'BLOQUEADO', 'PENDENCIA_CADUNICO') DEFAULT 'REGULAR',
-  cras_referencia VARCHAR(150) NOT NULL,
-  data_concessao DATE NOT NULL,
-  data_ultima_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-`;
+export const MYSQL_SCHEMA_DDL = TABLE_DDL_STATEMENTS.map(stmt => stmt + ';').join('\n\n');
 
 // In-Memory dataset with Recife seed data
 let memoryUsuarios: Usuario[] = [
@@ -554,15 +551,10 @@ export async function initDbConnection() {
       console.log(`[MySQL] Conexão com banco '${config.database}' estabelecida com sucesso!`);
       console.log('[MySQL Migrations] Executando DDL das tabelas solicitadas (usuarios, papeis, permissoes, usuario_papel, papel_permissao, beneficiarios_bpc)...');
 
-      const statements = MYSQL_SCHEMA_DDL
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('--'));
-
-      for (const sql of statements) {
+      for (const sql of TABLE_DDL_STATEMENTS) {
         await connection.query(sql);
       }
-      console.log('[MySQL Migrations] Tabelas DDL verificadas/criadas com sucesso.');
+      console.log('[MySQL Migrations] Tabelas DDL verificadas/criadas com sucesso no MySQL.');
 
       // Executar seeds se tabelas estiverem vazias
       await runMigrationsAndSeeds(connection);

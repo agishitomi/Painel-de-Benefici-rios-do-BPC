@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import middie from '@fastify/middie';
@@ -8,6 +9,8 @@ import { registerApiRoutes } from './server/routes.js';
 import { initDbConnection } from './server/db.js';
 
 async function startServer() {
+  console.log('[Fastify Server] Inicializando Painel de Beneficiário BPC do Recife...');
+
   const fastify = Fastify({
     logger: false
   });
@@ -21,10 +24,12 @@ async function startServer() {
   // Register API endpoints
   await registerApiRoutes(fastify);
 
-  // Attempt connection to MySQL (or fallback gracefully to memory)
-  initDbConnection().catch(err => {
-    console.warn('[MySQL Initialization]', err);
-  });
+  // Executa a inicialização do MySQL e as migrações/seeds de forma aguardada
+  try {
+    await initDbConnection();
+  } catch (err: any) {
+    console.warn('[MySQL Initialization]', err?.message || err);
+  }
 
   // Dev mode vs Production static hosting
   if (process.env.NODE_ENV !== 'production') {

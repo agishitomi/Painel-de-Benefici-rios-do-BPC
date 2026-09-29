@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 
@@ -420,13 +421,120 @@ export function getDbConfig() {
   return { host, port, user, password, database, uri };
 }
 
+export async function runMigrationsAndSeeds(connection: mysql.PoolConnection) {
+  // 1. Permissoes
+  const [permRows]: any = await connection.query('SELECT COUNT(*) as count FROM permissoes');
+  if (Number(permRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Populando tabela permissoes com 10 permissões padrão...');
+    for (const p of memoryPermissoes) {
+      await connection.query(
+        'INSERT INTO permissoes (id, nome, descricao, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id=id',
+        [p.id, p.nome, p.descricao, p.data_criacao, p.data_atualizacao]
+      );
+    }
+  }
+
+  // 2. Papeis
+  const [papelRows]: any = await connection.query('SELECT COUNT(*) as count FROM papeis');
+  if (Number(papelRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Populando tabela papeis com 5 papéis padrão...');
+    for (const p of memoryPapeis) {
+      await connection.query(
+        'INSERT INTO papeis (id, nome, descricao, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id=id',
+        [p.id, p.nome, p.descricao, p.data_criacao, p.data_atualizacao]
+      );
+    }
+  }
+
+  // 3. Papel Permissao
+  const [ppRows]: any = await connection.query('SELECT COUNT(*) as count FROM papel_permissao');
+  if (Number(ppRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Vinculando permissões aos papéis (papel_permissao)...');
+    for (const pp of memoryPapelPermissao) {
+      await connection.query(
+        'INSERT IGNORE INTO papel_permissao (papel_id, permissao_id) VALUES (?, ?)',
+        [pp.papel_id, pp.permissao_id]
+      );
+    }
+  }
+
+  // 4. Usuarios
+  const [userRows]: any = await connection.query('SELECT COUNT(*) as count FROM usuarios');
+  if (Number(userRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Populando tabela usuarios com administradores e gestores...');
+    for (const u of memoryUsuarios) {
+      await connection.query(
+        'INSERT INTO usuarios (id, nome, email, senha, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id=id',
+        [u.id, u.nome, u.email, u.senha, u.ativo, u.data_criacao, u.data_atualizacao]
+      );
+    }
+  }
+
+  // 5. Usuario Papel
+  const [upRows]: any = await connection.query('SELECT COUNT(*) as count FROM usuario_papel');
+  if (Number(upRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Vinculando usuários aos seus papéis (usuario_papel)...');
+    for (const up of memoryUsuarioPapel) {
+      await connection.query(
+        'INSERT IGNORE INTO usuario_papel (usuario_id, papel_id) VALUES (?, ?)',
+        [up.usuario_id, up.papel_id]
+      );
+    }
+  }
+
+  // 6. Beneficiarios BPC
+  const [benefRows]: any = await connection.query('SELECT COUNT(*) as count FROM beneficiarios_bpc');
+  if (Number(benefRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Populando beneficiarios_bpc com cadastros amostrais do Recife...');
+    for (const b of memoryBeneficiarios) {
+      await connection.query(
+        `INSERT INTO beneficiarios_bpc 
+         (id, numero_beneficio, nis, nome_beneficiario, cpf_mascarado, tipo_beneficio, bairro_recife, rpa_recife, valor_mensal, status_cadastral, cras_referencia, data_concessao, data_ultima_atualizacao)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE id=id`,
+        [b.id, b.numero_beneficio, b.nis, b.nome_beneficiario, b.cpf_mascarado, b.tipo_beneficio, b.bairro_recife, b.rpa_recife, b.valor_mensal, b.status_cadastral, b.cras_referencia, b.data_concessao, b.data_ultima_atualizacao]
+      );
+    }
+  }
+}
+
 export async function initDbConnection() {
   const config = getDbConfig();
-  
+  console.log(`[MySQL] Tentando inicializar conexão com MySQL em ${config.host}:${config.port} (database: ${config.database}, user: ${config.user})...`);
+
   try {
+    // 1. Garantir que o banco de dados exista (CREATE DATABASE IF NOT EXISTS)
+    if (!config.uri) {
+      try {
+        const rootConn = await mysql.createConnection({
+          host: config.host,
+          port: config.port,
+          user: config.user,
+          password: config.password,
+          connectTimeout: 3000
+        });
+        await rootConn.query(`CREATE DATABASE IF NOT EXISTS \`${config.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+        await rootConn.end().catch(() => {});
+        console.log(`[MySQL Migrations] Banco de dados '${config.database}' verificado/garantido com sucesso.`);
+      } catch (dbCreateErr: any) {
+        console.warn(`[MySQL] Aviso ao verificar/criar banco '${config.database}':`, dbCreateErr.message);
+      }
+    }
+
+    // 2. Fechar pool anterior caso já exista
+    if (pool) {
+      try {
+        await pool.end();
+      } catch {
+        // ignore
+      }
+      pool = null;
+    }
+
+    // 3. Criar Pool de conexões
     if (config.uri) {
       pool = mysql.createPool(config.uri);
-    } else if (process.env.MYSQL_HOST || process.env.MYSQL_DATABASE) {
+    } else {
       pool = mysql.createPool({
         host: config.host,
         port: config.port,
@@ -440,36 +548,63 @@ export async function initDbConnection() {
       });
     }
 
-    if (pool) {
-      const connection = await pool.getConnection();
+    // 4. Obter conexão, executar DDL e migrações/seeds
+    const connection = await pool.getConnection();
+    try {
+      console.log(`[MySQL] Conexão com banco '${config.database}' estabelecida com sucesso!`);
+      console.log('[MySQL Migrations] Executando DDL das tabelas solicitadas (usuarios, papeis, permissoes, usuario_papel, papel_permissao, beneficiarios_bpc)...');
+
+      const statements = MYSQL_SCHEMA_DDL
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && !s.startsWith('--'));
+
+      for (const sql of statements) {
+        await connection.query(sql);
+      }
+      console.log('[MySQL Migrations] Tabelas DDL verificadas/criadas com sucesso.');
+
+      // Executar seeds se tabelas estiverem vazias
+      await runMigrationsAndSeeds(connection);
+
       isConnectedToMySQL = true;
       lastDbError = null;
-      console.log(`[MySQL] Conexão estabelecida com sucesso no banco ${config.database}!`);
-      
-      // Auto create tables if connected to live MySQL
-      try {
-        const statements = MYSQL_SCHEMA_DDL
-          .split(';')
-          .map(s => s.trim())
-          .filter(s => s.length > 0 && !s.startsWith('--'));
-        
-        for (const sql of statements) {
-          await connection.query(sql);
-        }
-        console.log('[MySQL] Tabelas verificadas/criadas com sucesso.');
-      } catch (err: any) {
-        console.warn('[MySQL] Aviso ao inicializar schema DDL:', err.message);
-      } finally {
-        connection.release();
-      }
-    } else {
-      isConnectedToMySQL = false;
+      console.log(`[MySQL] Inicialização e migrações concluídas com sucesso no banco '${config.database}'!`);
+    } finally {
+      connection.release();
     }
   } catch (error: any) {
     isConnectedToMySQL = false;
     lastDbError = error.message || 'Falha ao conectar no servidor MySQL';
-    console.warn(`[MySQL] Modo Standby / Fallback ativo: ${lastDbError}. Operando com motor SQL em memória com dados semente do Recife.`);
+    console.warn(`[MySQL] Aviso: Não foi possível conectar ao MySQL (${lastDbError}).`);
+    console.warn('[MySQL] Operando com motor SQL em memória e dataset de Recife (Standby).');
+    console.warn('[MySQL] Para conectar a um banco real, inicie o MySQL e configure as variáveis no arquivo .env (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE).');
   }
+}
+
+export async function getLiveStats() {
+  if (isConnectedToMySQL && pool) {
+    try {
+      const [u]: any = await pool.query('SELECT COUNT(*) as count FROM usuarios');
+      const [p]: any = await pool.query('SELECT COUNT(*) as count FROM papeis');
+      const [perm]: any = await pool.query('SELECT COUNT(*) as count FROM permissoes');
+      const [b]: any = await pool.query('SELECT COUNT(*) as count FROM beneficiarios_bpc');
+      return {
+        totalUsuarios: Number(u[0]?.count || 0),
+        totalPapeis: Number(p[0]?.count || 0),
+        totalPermissoes: Number(perm[0]?.count || 0),
+        totalBeneficiarios: Number(b[0]?.count || 0)
+      };
+    } catch {
+      // fallback
+    }
+  }
+  return {
+    totalUsuarios: memoryUsuarios.length,
+    totalPapeis: memoryPapeis.length,
+    totalPermissoes: memoryPermissoes.length,
+    totalBeneficiarios: memoryBeneficiarios.length
+  };
 }
 
 export function getDbStatus() {
@@ -482,6 +617,7 @@ export function getDbStatus() {
     port: config.port,
     user: config.user,
     database: config.database,
+    migrationsExecuted: isConnectedToMySQL,
     lastError: lastDbError,
     stats: {
       totalUsuarios: memoryUsuarios.length,
@@ -928,6 +1064,54 @@ export async function deletePermissao(id: number): Promise<boolean> {
 // ENTITY: BENEFICIARIOS BPC RECIFE
 // ----------------------------------------------------
 export async function getBeneficiariosBPC(filters?: { query?: string; tipo?: string; status?: string; rpa?: string }): Promise<BeneficiarioBPC[]> {
+  if (isConnectedToMySQL && pool) {
+    try {
+      let sql = 'SELECT * FROM beneficiarios_bpc WHERE 1=1';
+      const params: any[] = [];
+
+      if (filters?.query) {
+        sql += ' AND (nome_beneficiario LIKE ? OR numero_beneficio LIKE ? OR nis LIKE ? OR bairro_recife LIKE ? OR cras_referencia LIKE ?)';
+        const q = `%${filters.query}%`;
+        params.push(q, q, q, q, q);
+      }
+
+      if (filters?.tipo && filters.tipo !== 'TODOS') {
+        sql += ' AND tipo_beneficio = ?';
+        params.push(filters.tipo);
+      }
+
+      if (filters?.status && filters.status !== 'TODOS') {
+        sql += ' AND status_cadastral = ?';
+        params.push(filters.status);
+      }
+
+      if (filters?.rpa && filters.rpa !== 'TODOS') {
+        sql += ' AND rpa_recife = ?';
+        params.push(filters.rpa);
+      }
+
+      sql += ' ORDER BY id ASC';
+      const [rows] = await pool.query<any[]>(sql, params);
+      return rows.map(r => ({
+        id: r.id,
+        numero_beneficio: r.numero_beneficio,
+        nis: r.nis,
+        nome_beneficiario: r.nome_beneficiario,
+        cpf_mascarado: r.cpf_mascarado,
+        tipo_beneficio: r.tipo_beneficio,
+        bairro_recife: r.bairro_recife,
+        rpa_recife: r.rpa_recife,
+        valor_mensal: parseFloat(r.valor_mensal) || 1412.00,
+        status_cadastral: r.status_cadastral,
+        cras_referencia: r.cras_referencia,
+        data_concessao: r.data_concessao ? new Date(r.data_concessao).toISOString().split('T')[0] : '',
+        data_ultima_atualizacao: r.data_ultima_atualizacao ? new Date(r.data_ultima_atualizacao).toISOString().replace('T', ' ').substring(0, 19) : ''
+      }));
+    } catch (err: any) {
+      console.error('[MySQL Error] getBeneficiariosBPC:', err.message);
+    }
+  }
+
   let list = [...memoryBeneficiarios];
 
   if (filters?.query) {
@@ -958,6 +1142,39 @@ export async function getBeneficiariosBPC(filters?: { query?: string; tipo?: str
 
 export async function createBeneficiarioBPC(data: Omit<BeneficiarioBPC, 'id' | 'data_ultima_atualizacao'>): Promise<BeneficiarioBPC> {
   const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+  if (isConnectedToMySQL && pool) {
+    try {
+      const [res]: any = await pool.query(
+        `INSERT INTO beneficiarios_bpc 
+         (numero_beneficio, nis, nome_beneficiario, cpf_mascarado, tipo_beneficio, bairro_recife, rpa_recife, valor_mensal, status_cadastral, cras_referencia, data_concessao, data_ultima_atualizacao)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          data.numero_beneficio,
+          data.nis,
+          data.nome_beneficiario,
+          data.cpf_mascarado,
+          data.tipo_beneficio,
+          data.bairro_recife,
+          data.rpa_recife,
+          data.valor_mensal || 1412.00,
+          data.status_cadastral || 'REGULAR',
+          data.cras_referencia,
+          data.data_concessao || now.split(' ')[0],
+          now
+        ]
+      );
+      return {
+        ...data,
+        id: res.insertId,
+        data_ultima_atualizacao: now
+      };
+    } catch (err: any) {
+      console.error('[MySQL Error] createBeneficiarioBPC:', err.message);
+      throw err;
+    }
+  }
+
   const newBenef: BeneficiarioBPC = {
     ...data,
     id: nextBeneficiarioId++,

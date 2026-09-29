@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {
   getDbStatus,
   getDbConfig,
+  getLiveStats,
   MYSQL_SCHEMA_DDL,
   initDbConnection,
   getUsuarios,
@@ -32,13 +33,15 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/db-status', async (request: FastifyRequest, reply: FastifyReply) => {
     const status = getDbStatus();
-    return status;
+    const liveStats = await getLiveStats();
+    return { ...status, stats: liveStats };
   });
 
   fastify.post('/api/db-test-connection', async (request: FastifyRequest, reply: FastifyReply) => {
     await initDbConnection();
     const status = getDbStatus();
-    return status;
+    const liveStats = await getLiveStats();
+    return { ...status, stats: liveStats };
   });
 
   // 2. MySQL Schema DDL

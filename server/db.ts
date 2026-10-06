@@ -663,6 +663,58 @@ export async function getUsuarios(): Promise<Usuario[]> {
   });
 }
 
+export async function getUsuarioByEmailWithPassword(email: string): Promise<(Usuario & { senha: string }) | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (isConnectedToMySQL && pool) {
+    try {
+      const [rows] = await pool.query<any[]>(`
+        SELECT u.id, u.nome, u.email, u.senha, u.ativo, u.data_criacao, u.data_atualizacao,
+               GROUP_CONCAT(p.nome SEPARATOR ', ') as papeis_nomes_str,
+               GROUP_CONCAT(p.id) as papeis_ids_str
+        FROM usuarios u
+        LEFT JOIN usuario_papel up ON u.id = up.usuario_id
+        LEFT JOIN papeis p ON up.papel_id = p.id
+        WHERE LOWER(u.email) = ?
+        GROUP BY u.id
+        LIMIT 1
+      `, [normalizedEmail]);
+
+      if (rows && rows.length > 0) {
+        const r = rows[0];
+        return {
+          id: r.id,
+          nome: r.nome,
+          email: r.email,
+          senha: r.senha,
+          ativo: Boolean(r.ativo),
+          data_criacao: r.data_criacao ? new Date(r.data_criacao).toISOString().replace('T', ' ').substring(0, 19) : '',
+          data_atualizacao: r.data_atualizacao ? new Date(r.data_atualizacao).toISOString().replace('T', ' ').substring(0, 19) : '',
+          papeis: r.papeis_ids_str ? r.papeis_ids_str.split(',').map(Number) : [],
+          papeis_nomes: r.papeis_nomes_str ? r.papeis_nomes_str.split(', ') : []
+        };
+      }
+      return null;
+    } catch (err: any) {
+      console.error('[MySQL Error] getUsuarioByEmailWithPassword:', err.message);
+    }
+  }
+
+  // Fallback to memory
+  const user = memoryUsuarios.find(u => u.email.toLowerCase() === normalizedEmail);
+  if (!user) return null;
+
+  const papeisIds = memoryUsuarioPapel.filter(up => up.usuario_id === user.id).map(up => up.papel_id);
+  const papeisNomes = memoryPapeis.filter(p => papeisIds.includes(p.id)).map(p => p.nome);
+
+  return {
+    ...user,
+    senha: user.senha || '$2a$10$X8m1ZsqJpXp9q8n6G3XFqeqj6GfR2v5yH7sU8rK9k0l1m2n3o4p5q',
+    papeis: papeisIds,
+    papeis_nomes: papeisNomes
+  };
+}
+
 export async function createUsuario(data: { nome: string; email: string; senha?: string; ativo?: boolean; papeis?: number[] }): Promise<Usuario> {
   const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
   const hashedPassword = data.senha ? await bcrypt.hash(data.senha, 10) : await bcrypt.hash('Recife@2025', 10);

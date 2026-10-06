@@ -81,3 +81,19 @@ export interface BeneficiariosResumo {
   pendenciaCadUnico: number;
   totalRepasseMensal: number;
 }
+
+export interface AuthUser {
+  id: number;
+  nome: string;
+  email: string;
+  ativo: boolean;
+  papeis: { id: number; nome: string }[];
+  permissoes: string[];
+}
+
+export interface LoginResponse {
+  success: boolean;
+  token: string;
+  usuario: AuthUser;
+  message?: string;
+}

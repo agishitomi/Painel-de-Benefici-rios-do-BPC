@@ -9,12 +9,17 @@ import { DashboardView } from './components/DashboardView';
 import { UsuariosView } from './components/UsuariosView';
 import { PapeisPermissoesView } from './components/PapeisPermissoesView';
 import { DatabaseFastifyView } from './components/DatabaseFastifyView';
-import { Usuario, Papel, Permissao, BeneficiarioBPC, DbStatus, BeneficiariosResumo } from './types';
+import { LoginView } from './components/LoginView';
+import { Usuario, Papel, Permissao, BeneficiarioBPC, DbStatus, BeneficiariosResumo, AuthUser } from './types';
 import * as api from './api';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'usuarios' | 'papeis' | 'database'>('dashboard');
+
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => api.getStoredUser());
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
   // State collections
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -24,11 +29,23 @@ export default function App() {
   const [resumo, setResumo] = useState<BeneficiariosResumo | null>(null);
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingDb, setLoadingDb] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
   const loadAllData = useCallback(async () => {
+    // Carrega sempre o status do banco (rota pública)
+    api.getDbStatus().then(setDbStatus).catch(() => null);
+
+    // Se não estiver logado, não tenta carregar rotas protegidas por JWT
+    if (!api.getStoredToken()) {
+      setUsuarios([]);
+      setPapeis([]);
+      setPermissoes([]);
+      setBeneficiarios([]);
+      return;
+    }
+
     setLoading(true);
     setGlobalError(null);
     try {
@@ -51,7 +68,7 @@ export default function App() {
         setDbStatus(dbData);
       }
     } catch (err: any) {
-      setGlobalError(err.message || 'Erro ao carregar dados do servidor');
+      setGlobalError(err.message || 'Erro ao carregar dados protegidos do servidor');
     } finally {
       setLoading(false);
     }
@@ -69,9 +86,68 @@ export default function App() {
     }
   };
 
+  // Verifica sessão ao iniciar
   useEffect(() => {
-    loadAllData();
+    const token = api.getStoredToken();
+    if (token) {
+      api.getMe()
+        .then((user) => {
+          setCurrentUser(user);
+          loadAllData();
+        })
+        .catch(() => {
+          api.setStoredToken(null);
+          api.setStoredUser(null);
+          setCurrentUser(null);
+        });
+    } else {
+      // Se não há token gravado, faz um login inicial padrão com o administrador
+      api.login('alberto.barbieri@recife.pe.gov.br', 'admin123')
+        .then((res) => {
+          if (res.success && res.usuario) {
+            setCurrentUser(res.usuario);
+            loadAllData();
+          }
+        })
+        .catch(() => {
+          // Exibe tela de login se não conseguir autenticar automaticamente
+          setCurrentUser(null);
+        });
+    }
+
+    const handleUnauthorized = () => {
+      setCurrentUser(null);
+      setGlobalError('Sua sessão JWT expirou. Por favor, autentique-se novamente.');
+    };
+
+    const handleLogout = () => {
+      setCurrentUser(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    window.addEventListener('auth:logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('auth:logout', handleLogout);
+    };
   }, [loadAllData]);
+
+  const handleLoginSuccess = (user: AuthUser) => {
+    setCurrentUser(user);
+    setShowLoginModal(false);
+    setGlobalError(null);
+    loadAllData();
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setCurrentUser(null);
+    setUsuarios([]);
+    setPapeis([]);
+    setPermissoes([]);
+    setBeneficiarios([]);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -81,6 +157,9 @@ export default function App() {
         dbStatus={dbStatus}
         onRefreshDb={refreshDbStatus}
         isLoadingDb={loadingDb}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenLogin={() => setShowLoginModal(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -99,11 +178,13 @@ export default function App() {
           </div>
         )}
 
-        {loading ? (
+        {!currentUser ? (
+          <LoginView onLoginSuccess={handleLoginSuccess} />
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
             <p className="text-sm font-medium text-slate-500 font-['Outfit']">
-              Carregando dados do Painel de Beneficiário BPC do Recife...
+              Validando JWT e sincronizando dados do BPC Recife...
             </p>
           </div>
         ) : (
@@ -150,12 +231,13 @@ export default function App() {
             <span>© 2025 Prefeitura da Cidade do Recife • Secretaria de Desenvolvimento Social</span>
           </div>
           <div className="flex items-center gap-4 text-slate-500">
-            <span>Fastify v5 + mysql2</span>
+            <span>Fastify v5 + JWT Bearer</span>
             <span>•</span>
-            <span>React 19 + Tailwind CSS</span>
+            <span>mysql2 + React 19</span>
           </div>
         </div>
       </footer>
     </div>
   );
 }
+

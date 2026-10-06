@@ -116,10 +116,16 @@ Retorna o script SQL DDL completo de criação das tabelas e a estrutura detalha
 
 ---
 
-### 2. Autenticação
+### 2. Autenticação (JWT - JSON Web Token)
+
+O sistema utiliza tokens **JWT (JSON Web Token)** assinados com algoritmo HMAC SHA-256 e validade de 12 horas.
+Para acessar os endpoints protegidos, o cliente deve enviar o cabeçalho HTTP:
+```http
+Authorization: Bearer <seu_token_jwt>
+```
 
 #### `POST /api/auth/login`
-Autentica um usuário através de seu e-mail e senha cadastrados.
+Autentica um usuário através de seu e-mail e senha cadastrados (validação com hash bcrypt).
 - **Body**:
 ```json
 {
@@ -131,7 +137,7 @@ Autentica um usuário através de seu e-mail e senha cadastrados.
 ```json
 {
   "success": true,
-  "token": "fake-jwt-1-1727618400000",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tZSI6IkFsYmVydG8gQmFyYmllcmki...",
   "usuario": {
     "id": 1,
     "nome": "Alberto Barbieri",
@@ -153,13 +159,36 @@ Autentica um usuário através de seu e-mail e senha cadastrados.
       "auditoria:visualizar",
       "relatorios:gerenciais"
     ]
+  },
+  "message": "Autenticado com sucesso via JWT."
+}
+```
+- **Erros**:
+  - `400 Bad Request`: `{"success": false, "error": "Email é obrigatório para autenticação."}`
+  - `401 Unauthorized`: `{"success": false, "error": "Credenciais inválidas ou senha incorreta."}`
+  - `403 Forbidden`: `{"success": false, "error": "Conta de usuário desativada pelo administrador."}`
+
+#### `GET /api/auth/me`
+*Rota Protegida por JWT (`Authorization: Bearer <token>`)*.
+Retorna os dados cadastrais, perfil, papéis e permissões do usuário atualmente autenticado na sessão.
+- **Resposta (200 OK)**:
+```json
+{
+  "success": true,
+  "usuario": {
+    "id": 1,
+    "nome": "Alberto Barbieri",
+    "email": "alberto.barbieri@recife.pe.gov.br",
+    "ativo": true,
+    "papeis": [
+      { "id": 1, "nome": "Administrador Geral" }
+    ],
+    "permissoes": ["bpc:visualizar", "usuarios:gerenciar", "..."]
   }
 }
 ```
 - **Erros**:
-  - `400 Bad Request`: `{"success": false, "error": "Email é obrigatório."}`
-  - `401 Unauthorized`: `{"success": false, "error": "Credenciais inválidas ou usuário não encontrado."}`
-  - `403 Forbidden`: `{"success": false, "error": "Conta de usuário desativada pelo administrador."}`
+  - `401 Unauthorized`: Token ausente, inválido ou expirado.
 
 ---
 

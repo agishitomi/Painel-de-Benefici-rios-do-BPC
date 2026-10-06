@@ -1,24 +1,116 @@
-import { Usuario, Papel, Permissao, BeneficiarioBPC, DbStatus, BeneficiariosResumo } from './types';
+import { Usuario, Papel, Permissao, BeneficiarioBPC, DbStatus, BeneficiariosResumo, AuthUser, LoginResponse } from './types';
 
 const API_BASE = '/api';
+const TOKEN_KEY = 'bpc_recife_jwt_token';
+const USER_KEY = 'bpc_recife_user';
+
+export function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function getStoredUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: AuthUser | null): void {
+  try {
+    if (user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(USER_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function logout(): void {
+  setStoredToken(null);
+  setStoredUser(null);
+  window.dispatchEvent(new Event('auth:logout'));
+}
 
 async function safeFetchJson<T>(url: string, options?: RequestInit, defaultErrMsg = 'Erro na requisição'): Promise<T> {
-  const res = await fetch(url, options);
+  const token = getStoredToken();
+  const headers = new Headers(options?.headers || {});
+
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const res = await fetch(url, {
+    ...options,
+    headers
+  });
   const contentType = res.headers.get('content-type') || '';
   
   if (contentType.includes('application/json')) {
     const json = await res.json();
     if (!res.ok) {
+      if (res.status === 401) {
+        setStoredToken(null);
+        setStoredUser(null);
+        window.dispatchEvent(new Event('auth:unauthorized'));
+      }
       throw new Error(json.error || `${defaultErrMsg} (Status ${res.status})`);
     }
     return json;
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      setStoredToken(null);
+      setStoredUser(null);
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
     throw new Error(`${defaultErrMsg} (Status ${res.status})`);
   }
 
   throw new Error('Resposta do servidor inesperada (não-JSON).');
+}
+
+export async function login(email: string, senha?: string): Promise<LoginResponse> {
+  const data = await safeFetchJson<LoginResponse>(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, senha })
+  }, 'Falha na autenticação');
+
+  if (data.success && data.token) {
+    setStoredToken(data.token);
+    setStoredUser(data.usuario);
+  }
+  return data;
+}
+
+export async function getMe(): Promise<AuthUser> {
+  const data = await safeFetchJson<{ success: boolean; usuario: AuthUser }>(`${API_BASE}/auth/me`, undefined, 'Erro ao verificar sessão');
+  if (data.success && data.usuario) {
+    setStoredUser(data.usuario);
+    return data.usuario;
+  }
+  throw new Error('Sessão expirada ou usuário não autenticado.');
 }
 
 export async function getDbStatus(): Promise<DbStatus> {

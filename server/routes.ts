@@ -84,7 +84,7 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
         },
         {
           name: 'indicadores',
-          columns: ['id (PK, AUTO_INCREMENT)', 'painel_id (FK -> paineis.id)', 'codigo VARCHAR(50) UNIQUE', 'titulo VARCHAR(150)', 'descricao TEXT', 'tipo_calculo VARCHAR(50)', 'valor_atual DECIMAL', 'unidade_medida VARCHAR(30)', 'icone VARCHAR(50)', 'cor VARCHAR(50)', 'ordem INT', 'ativo BOOLEAN', 'data_criacao DATETIME', 'data_atualizacao DATETIME']
+          columns: ['id (PK, AUTO_INCREMENT)', 'painel_id (FK -> paineis.id)', 'codigo VARCHAR(50) UNIQUE', 'titulo VARCHAR(150)', 'descricao TEXT', 'fonte_dado VARCHAR(255)', 'tipo_calculo VARCHAR(50)', 'valor_atual DECIMAL', 'unidade_medida VARCHAR(30)', 'icone VARCHAR(50)', 'cor VARCHAR(50)', 'ordem INT', 'ativo BOOLEAN', 'data_criacao DATETIME', 'data_atualizacao DATETIME']
         }
       ]
     };

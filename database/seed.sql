@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS `indicadores` (
   `codigo` VARCHAR(50) NOT NULL UNIQUE,
   `titulo` VARCHAR(150) NOT NULL,
   `descricao` TEXT,
+  `fonte_dado` VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS',
   `tipo_calculo` VARCHAR(50) DEFAULT 'COUNT',
   `valor_atual` DECIMAL(14,2) DEFAULT 0,
   `unidade_medida` VARCHAR(30) DEFAULT 'beneficiários',
@@ -225,13 +226,14 @@ ON DUPLICATE KEY UPDATE `nome`=VALUES(`nome`), `descricao`=VALUES(`descricao`), 
 -- Indicador 1: Total de beneficiários
 -- Indicador 2: Beneficiários idosos
 -- Indicador 3: Beneficiários com deficiência
-INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `tipo_calculo`, `valor_atual`, `unidade_medida`, `icone`, `cor`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`) VALUES
+INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `fonte_dado`, `tipo_calculo`, `valor_atual`, `unidade_medida`, `icone`, `cor`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`) VALUES
 (
   1,
   1,
   'TOTAL_BENEFICIARIOS',
   'Total de Beneficiários',
   'Quantitativo consolidado de beneficiários do BPC (Idosos e PCD) ativos e cadastrados no município do Recife.',
+  'MDS / SAGICAD / INSS - Folha Mensal BPC Recife',
   'COUNT',
   8.00,
   'beneficiários',
@@ -248,6 +250,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
   'BENEFICIARIOS_IDOSOS',
   'Beneficiários Idosos',
   'Quantitativo de idosos com 65 anos ou mais em situação de vulnerabilidade beneficiários do BPC/LOAS no Recife.',
+  'INSS / Dataprev - Benefício Espécie 88 (Amparo Social ao Idoso)',
   'COUNT',
   4.00,
   'idosos',
@@ -264,6 +267,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
   'BENEFICIARIOS_DEFICIENCIA',
   'Beneficiários com Deficiência',
   'Quantitativo de pessoas com deficiência física, intelectual, visual ou auditiva atendidas pelo benefício BPC PCD no Recife.',
+  'INSS / Dataprev - Benefício Espécie 87 (Amparo Social à PCD)',
   'COUNT',
   4.00,
   'PCD',
@@ -277,6 +281,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
 ON DUPLICATE KEY UPDATE 
   `titulo`=VALUES(`titulo`),
   `descricao`=VALUES(`descricao`),
+  `fonte_dado`=VALUES(`fonte_dado`),
   `tipo_calculo`=VALUES(`tipo_calculo`),
   `valor_atual`=VALUES(`valor_atual`),
   `unidade_medida`=VALUES(`unidade_medida`),

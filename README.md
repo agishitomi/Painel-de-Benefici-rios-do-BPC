@@ -50,9 +50,9 @@ O sistema implementa o modelo relacional de controle de acesso (RBAC) e gestão 
 5. **`papel_permissao`**: `papel_id` (FK -> `papeis.id`), `permissao_id` (FK -> `permissoes.id`)
 6. **`beneficiarios_bpc`**: `id`, `numero_beneficio`, `nis`, `nome_beneficiario`, `cpf_mascarado`, `tipo_beneficio`, `bairro_recife`, `rpa_recife`, `valor_mensal`, `status_cadastral`, `cras_referencia`, `data_concessao`, `data_ultima_atualizacao`
 7. **`paineis`**: `id`, `nome`, `codigo`, `descricao`, `ativo`, `data_criacao`, `data_atualizacao`
-8. **`indicadores`**: `id`, `painel_id` (FK -> `paineis.id`), `codigo`, `titulo`, `descricao`, `tipo_calculo`, `valor_atual`, `unidade_medida`, `icone`, `cor`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`
+8. **`indicadores`**: `id`, `painel_id` (FK -> `paineis.id`), `codigo`, `titulo`, `descricao`, `fonte_dado`, `tipo_calculo`, `valor_atual`, `unidade_medida`, `icone`, `cor`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`
 
-> **Script de Carga e Migração**: O arquivo [`database/seed.sql`](database/seed.sql) contém a criação DDL completa das 8 tabelas e a carga inicial (seeds), incluindo 1 painel executivo e os 3 indicadores monitorados: Total de Beneficiários, Beneficiários Idosos e Beneficiários com Deficiência.
+> **Script de Carga e Migração**: O arquivo [`database/seed.sql`](database/seed.sql) contém a criação DDL completa das 8 tabelas e a carga inicial (seeds), incluindo 1 painel executivo e os 3 indicadores monitorados com especificação de **fonte do dado** (`fonte_dado`): Total de Beneficiários, Beneficiários Idosos e Beneficiários com Deficiência.
 
 ---
 

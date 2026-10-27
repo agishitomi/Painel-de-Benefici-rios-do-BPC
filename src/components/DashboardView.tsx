@@ -129,49 +129,64 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total de Beneficiários</span>
-            <div className="text-2xl font-bold text-slate-900 mt-1 font-['Outfit']">
-              {resumo?.totalGeral ?? beneficiarios.length}
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total de Beneficiários</span>
+              <div className="text-2xl font-bold text-slate-900 mt-1 font-['Outfit']">
+                {resumo?.totalGeral ?? beneficiarios.length}
+              </div>
+              <div className="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>{resumo?.regulares ?? 0} Cadastros Regulares</span>
+              </div>
             </div>
-            <div className="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>{resumo?.regulares ?? 0} Cadastros Regulares</span>
-            </div>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">BPC Idoso (65+ anos)</span>
-            <div className="text-2xl font-bold text-slate-900 mt-1 font-['Outfit']">
-              {resumo?.idosos ?? beneficiarios.filter(b => b.tipo_beneficio === 'BPC_IDOSO').length}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Benefício LOAS Idoso
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+              <Users className="w-6 h-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-            <UserCheck className="w-6 h-6" />
+          <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-400 truncate" title="Fonte do dado: MDS / SAGICAD / INSS - Folha Mensal BPC Recife">
+            <span className="font-semibold text-slate-500">Fonte:</span> MDS / SAGICAD / INSS
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">BPC PCD</span>
-            <div className="text-2xl font-bold text-slate-900 mt-1 font-['Outfit']">
-              {resumo?.pcd ?? beneficiarios.filter(b => b.tipo_beneficio === 'BPC_PCD').length}
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">BPC Idoso (65+ anos)</span>
+              <div className="text-2xl font-bold text-slate-900 mt-1 font-['Outfit']">
+                {resumo?.idosos ?? beneficiarios.filter(b => b.tipo_beneficio === 'BPC_IDOSO').length}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Benefício LOAS Idoso
+              </div>
             </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Pessoas com Deficiência
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+              <UserCheck className="w-6 h-6" />
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100">
-            <CreditCard className="w-6 h-6" />
+          <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-400 truncate" title="Fonte do dado: INSS / Dataprev - Benefício Espécie 88 (Idoso)">
+            <span className="font-semibold text-slate-500">Fonte:</span> INSS / Dataprev (Espécie 88)
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">BPC PCD</span>
+              <div className="text-2xl font-bold text-slate-900 mt-1 font-['Outfit']">
+                {resumo?.pcd ?? beneficiarios.filter(b => b.tipo_beneficio === 'BPC_PCD').length}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                Pessoas com Deficiência
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100 shrink-0">
+              <CreditCard className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-400 truncate" title="Fonte do dado: INSS / Dataprev - Benefício Espécie 87 (PCD)">
+            <span className="font-semibold text-slate-500">Fonte:</span> INSS / Dataprev (Espécie 87)
           </div>
         </div>
 

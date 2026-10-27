@@ -117,6 +117,7 @@ export interface Indicador {
   codigo: string;
   titulo: string;
   descricao?: string;
+  fonte_dado: string;
   tipo_calculo: string;
   valor_atual: number;
   unidade_medida: string;

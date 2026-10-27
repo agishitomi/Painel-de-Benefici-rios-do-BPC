@@ -68,6 +68,8 @@ export interface DbStatus {
     totalPapeis: number;
     totalPermissoes: number;
     totalBeneficiarios: number;
+    totalPaineis?: number;
+    totalIndicadores?: number;
   };
 }
 
@@ -96,4 +98,32 @@ export interface LoginResponse {
   token: string;
   usuario: AuthUser;
   message?: string;
+}
+
+export interface Painel {
+  id: number;
+  nome: string;
+  codigo: string;
+  descricao?: string;
+  ativo: boolean;
+  data_criacao: string;
+  data_atualizacao: string;
+  indicadores?: Indicador[];
+}
+
+export interface Indicador {
+  id: number;
+  painel_id: number;
+  codigo: string;
+  titulo: string;
+  descricao?: string;
+  tipo_calculo: string;
+  valor_atual: number;
+  unidade_medida: string;
+  icone: string;
+  cor: string;
+  ordem: number;
+  ativo: boolean;
+  data_criacao: string;
+  data_atualizacao: string;
 }

@@ -20,7 +20,9 @@ import {
   createPermissao,
   deletePermissao,
   getBeneficiariosBPC,
-  createBeneficiarioBPC
+  createBeneficiarioBPC,
+  getPaineis,
+  getIndicadores
 } from './db.js';
 
 export async function registerApiRoutes(fastify: FastifyInstance) {
@@ -75,6 +77,14 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
         {
           name: 'beneficiarios_bpc',
           columns: ['id (PK, AUTO_INCREMENT)', 'numero_beneficio VARCHAR(30) UNIQUE', 'nis VARCHAR(20)', 'nome_beneficiario VARCHAR(255)', 'cpf_mascarado VARCHAR(20)', 'tipo_beneficio ENUM', 'bairro_recife VARCHAR(100)', 'rpa_recife VARCHAR(20)', 'valor_mensal DECIMAL', 'status_cadastral ENUM', 'cras_referencia VARCHAR(150)', 'data_concessao DATE', 'data_ultima_atualizacao DATETIME']
+        },
+        {
+          name: 'paineis',
+          columns: ['id (PK, AUTO_INCREMENT)', 'nome VARCHAR(150)', 'codigo VARCHAR(50) UNIQUE', 'descricao TEXT', 'ativo BOOLEAN', 'data_criacao DATETIME', 'data_atualizacao DATETIME']
+        },
+        {
+          name: 'indicadores',
+          columns: ['id (PK, AUTO_INCREMENT)', 'painel_id (FK -> paineis.id)', 'codigo VARCHAR(50) UNIQUE', 'titulo VARCHAR(150)', 'descricao TEXT', 'tipo_calculo VARCHAR(50)', 'valor_atual DECIMAL', 'unidade_medida VARCHAR(30)', 'icone VARCHAR(50)', 'cor VARCHAR(50)', 'ordem INT', 'ativo BOOLEAN', 'data_criacao DATETIME', 'data_atualizacao DATETIME']
         }
       ]
     };
@@ -342,6 +352,33 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
       return { success: true, data: created, message: 'Beneficiário cadastrado com sucesso.' };
     } catch (err: any) {
       reply.status(400);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 8. Painéis & Indicadores BPC (Protegidos por JWT)
+  fastify.get('/api/paineis', { preHandler: authenticateJwt }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const paineis = await getPaineis();
+      const indicadores = await getIndicadores();
+      const paineisComIndicadores = paineis.map(p => ({
+        ...p,
+        indicadores: indicadores.filter(i => i.painel_id === p.id)
+      }));
+      return { success: true, data: paineisComIndicadores, total: paineis.length };
+    } catch (err: any) {
+      reply.status(500);
+      return { success: false, error: err.message };
+    }
+  });
+
+  fastify.get('/api/indicadores', { preHandler: authenticateJwt }, async (request: FastifyRequest<{ Querystring: { painel_id?: string } }>, reply: FastifyReply) => {
+    try {
+      const painelId = request.query.painel_id ? parseInt(request.query.painel_id, 10) : undefined;
+      const list = await getIndicadores(painelId);
+      return { success: true, data: list, total: list.length };
+    } catch (err: any) {
+      reply.status(500);
       return { success: false, error: err.message };
     }
   });

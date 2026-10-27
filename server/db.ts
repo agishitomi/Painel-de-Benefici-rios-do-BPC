@@ -113,6 +113,36 @@ export const TABLE_DDL_STATEMENTS = [
     cras_referencia VARCHAR(150) NOT NULL,
     data_concessao DATE NOT NULL,
     data_ultima_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // 7. Tabela: paineis
+  `CREATE TABLE IF NOT EXISTS paineis (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL,
+    codigo VARCHAR(50) NOT NULL UNIQUE,
+    descricao TEXT,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // 8. Tabela: indicadores
+  `CREATE TABLE IF NOT EXISTS indicadores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    painel_id INT NOT NULL,
+    codigo VARCHAR(50) NOT NULL UNIQUE,
+    titulo VARCHAR(150) NOT NULL,
+    descricao TEXT,
+    tipo_calculo VARCHAR(50) DEFAULT 'COUNT',
+    valor_atual DECIMAL(14,2) DEFAULT 0,
+    unidade_medida VARCHAR(30) DEFAULT 'beneficiários',
+    icone VARCHAR(50) DEFAULT 'Users',
+    cor VARCHAR(50) DEFAULT 'blue',
+    ordem INT DEFAULT 1,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ind_painel FOREIGN KEY (painel_id) REFERENCES paineis(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 ];
 
@@ -402,6 +432,96 @@ let nextPapelId = 6;
 let nextPermissaoId = 11;
 let nextBeneficiarioId = 9;
 
+export interface PainelRow {
+  id: number;
+  nome: string;
+  codigo: string;
+  descricao: string;
+  ativo: boolean;
+  data_criacao: string;
+  data_atualizacao: string;
+}
+
+export interface IndicadorRow {
+  id: number;
+  painel_id: number;
+  codigo: string;
+  titulo: string;
+  descricao: string;
+  tipo_calculo: string;
+  valor_atual: number;
+  unidade_medida: string;
+  icone: string;
+  cor: string;
+  ordem: number;
+  ativo: boolean;
+  data_criacao: string;
+  data_atualizacao: string;
+}
+
+let memoryPaineis: PainelRow[] = [
+  {
+    id: 1,
+    nome: 'Painel de Beneficiário BPC do Recife',
+    codigo: 'PAINEL_BPC_RECIFE',
+    descricao: 'Painel central de monitoramento, territorialização e acompanhamento dos beneficiários do Benefício de Prestação Continuada (BPC/LOAS) na Cidade do Recife.',
+    ativo: true,
+    data_criacao: '2025-01-01 08:00:00',
+    data_atualizacao: '2025-01-01 08:00:00'
+  }
+];
+
+let memoryIndicadores: IndicadorRow[] = [
+  {
+    id: 1,
+    painel_id: 1,
+    codigo: 'TOTAL_BENEFICIARIOS',
+    titulo: 'Total de Beneficiários',
+    descricao: 'Quantitativo consolidado de beneficiários do BPC (Idosos e PCD) ativos e cadastrados no município do Recife.',
+    tipo_calculo: 'COUNT',
+    valor_atual: 8,
+    unidade_medida: 'beneficiários',
+    icone: 'Users',
+    cor: 'blue',
+    ordem: 1,
+    ativo: true,
+    data_criacao: '2025-01-01 08:00:00',
+    data_atualizacao: '2025-01-01 08:00:00'
+  },
+  {
+    id: 2,
+    painel_id: 1,
+    codigo: 'BENEFICIARIOS_IDOSOS',
+    titulo: 'Beneficiários Idosos',
+    descricao: 'Quantitativo de idosos com 65 anos ou mais em situação de vulnerabilidade beneficiários do BPC/LOAS no Recife.',
+    tipo_calculo: 'COUNT',
+    valor_atual: 4,
+    unidade_medida: 'idosos',
+    icone: 'UserCheck',
+    cor: 'indigo',
+    ordem: 2,
+    ativo: true,
+    data_criacao: '2025-01-01 08:00:00',
+    data_atualizacao: '2025-01-01 08:00:00'
+  },
+  {
+    id: 3,
+    painel_id: 1,
+    codigo: 'BENEFICIARIOS_DEFICIENCIA',
+    titulo: 'Beneficiários com Deficiência',
+    descricao: 'Quantitativo de pessoas com deficiência física, intelectual, visual ou auditiva atendidas pelo benefício BPC PCD no Recife.',
+    tipo_calculo: 'COUNT',
+    valor_atual: 4,
+    unidade_medida: 'PCD',
+    icone: 'CreditCard',
+    cor: 'violet',
+    ordem: 3,
+    ativo: true,
+    data_criacao: '2025-01-01 08:00:00',
+    data_atualizacao: '2025-01-01 08:00:00'
+  }
+];
+
 // MySQL Pool setup (Lazy initialization)
 let pool: mysql.Pool | null = null;
 let isConnectedToMySQL = false;
@@ -493,6 +613,30 @@ export async function runMigrationsAndSeeds(connection: mysql.PoolConnection) {
       );
     }
   }
+
+  // 7. Paineis (1 Painel BPC Recife)
+  const [painelRows]: any = await connection.query('SELECT COUNT(*) as count FROM paineis');
+  if (Number(painelRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Populando tabela paineis com 1 painel principal...');
+    for (const p of memoryPaineis) {
+      await connection.query(
+        'INSERT INTO paineis (id, nome, codigo, descricao, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id=id',
+        [p.id, p.nome, p.codigo, p.descricao, p.ativo, p.data_criacao, p.data_atualizacao]
+      );
+    }
+  }
+
+  // 8. Indicadores (3 Indicadores solicitados: total, idosos, PCD)
+  const [indRows]: any = await connection.query('SELECT COUNT(*) as count FROM indicadores');
+  if (Number(indRows[0]?.count || 0) === 0) {
+    console.log('[MySQL Migrations] Populando tabela indicadores com 3 indicadores solicitados...');
+    for (const ind of memoryIndicadores) {
+      await connection.query(
+        'INSERT INTO indicadores (id, painel_id, codigo, titulo, descricao, tipo_calculo, valor_atual, unidade_medida, icone, cor, ordem, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE id=id',
+        [ind.id, ind.painel_id, ind.codigo, ind.titulo, ind.descricao, ind.tipo_calculo, ind.valor_atual, ind.unidade_medida, ind.icone, ind.cor, ind.ordem, ind.ativo, ind.data_criacao, ind.data_atualizacao]
+      );
+    }
+  }
 }
 
 export async function initDbConnection() {
@@ -581,11 +725,15 @@ export async function getLiveStats() {
       const [p]: any = await pool.query('SELECT COUNT(*) as count FROM papeis');
       const [perm]: any = await pool.query('SELECT COUNT(*) as count FROM permissoes');
       const [b]: any = await pool.query('SELECT COUNT(*) as count FROM beneficiarios_bpc');
+      const [paineis]: any = await pool.query('SELECT COUNT(*) as count FROM paineis').catch(() => [{ count: 0 }]);
+      const [ind]: any = await pool.query('SELECT COUNT(*) as count FROM indicadores').catch(() => [{ count: 0 }]);
       return {
         totalUsuarios: Number(u[0]?.count || 0),
         totalPapeis: Number(p[0]?.count || 0),
         totalPermissoes: Number(perm[0]?.count || 0),
-        totalBeneficiarios: Number(b[0]?.count || 0)
+        totalBeneficiarios: Number(b[0]?.count || 0),
+        totalPaineis: Number(paineis[0]?.count || 0),
+        totalIndicadores: Number(ind[0]?.count || 0)
       };
     } catch {
       // fallback
@@ -595,7 +743,9 @@ export async function getLiveStats() {
     totalUsuarios: memoryUsuarios.length,
     totalPapeis: memoryPapeis.length,
     totalPermissoes: memoryPermissoes.length,
-    totalBeneficiarios: memoryBeneficiarios.length
+    totalBeneficiarios: memoryBeneficiarios.length,
+    totalPaineis: memoryPaineis.length,
+    totalIndicadores: memoryIndicadores.length
   };
 }
 
@@ -615,7 +765,9 @@ export function getDbStatus() {
       totalUsuarios: memoryUsuarios.length,
       totalPapeis: memoryPapeis.length,
       totalPermissoes: memoryPermissoes.length,
-      totalBeneficiarios: memoryBeneficiarios.length
+      totalBeneficiarios: memoryBeneficiarios.length,
+      totalPaineis: memoryPaineis.length,
+      totalIndicadores: memoryIndicadores.length
     }
   };
 }
@@ -1226,4 +1378,66 @@ export async function createBeneficiarioBPC(data: Omit<BeneficiarioBPC, 'id' | '
   };
   memoryBeneficiarios.unshift(newBenef);
   return newBenef;
+}
+
+// ----------------------------------------------------
+// ENTITY: PAINEIS & INDICADORES
+// ----------------------------------------------------
+export async function getPaineis(): Promise<PainelRow[]> {
+  if (isConnectedToMySQL && pool) {
+    try {
+      const [rows] = await pool.query<any[]>('SELECT * FROM paineis ORDER BY id ASC');
+      return rows.map(r => ({
+        id: r.id,
+        nome: r.nome,
+        codigo: r.codigo,
+        descricao: r.descricao || '',
+        ativo: Boolean(r.ativo),
+        data_criacao: r.data_criacao ? new Date(r.data_criacao).toISOString().replace('T', ' ').substring(0, 19) : '',
+        data_atualizacao: r.data_atualizacao ? new Date(r.data_atualizacao).toISOString().replace('T', ' ').substring(0, 19) : ''
+      }));
+    } catch (err: any) {
+      console.error('[MySQL Error] getPaineis:', err.message);
+    }
+  }
+  return [...memoryPaineis];
+}
+
+export async function getIndicadores(painelId?: number): Promise<IndicadorRow[]> {
+  if (isConnectedToMySQL && pool) {
+    try {
+      let sql = 'SELECT * FROM indicadores';
+      const params: any[] = [];
+      if (painelId) {
+        sql += ' WHERE painel_id = ?';
+        params.push(painelId);
+      }
+      sql += ' ORDER BY ordem ASC';
+      const [rows] = await pool.query<any[]>(sql, params);
+      return rows.map(r => ({
+        id: r.id,
+        painel_id: r.painel_id,
+        codigo: r.codigo,
+        titulo: r.titulo,
+        descricao: r.descricao || '',
+        tipo_calculo: r.tipo_calculo || 'COUNT',
+        valor_atual: Number(r.valor_atual || 0),
+        unidade_medida: r.unidade_medida || 'beneficiários',
+        icone: r.icone || 'Users',
+        cor: r.cor || 'blue',
+        ordem: Number(r.ordem || 1),
+        ativo: Boolean(r.ativo),
+        data_criacao: r.data_criacao ? new Date(r.data_criacao).toISOString().replace('T', ' ').substring(0, 19) : '',
+        data_atualizacao: r.data_atualizacao ? new Date(r.data_atualizacao).toISOString().replace('T', ' ').substring(0, 19) : ''
+      }));
+    } catch (err: any) {
+      console.error('[MySQL Error] getIndicadores:', err.message);
+    }
+  }
+
+  let list = [...memoryIndicadores];
+  if (painelId) {
+    list = list.filter(i => i.painel_id === painelId);
+  }
+  return list;
 }

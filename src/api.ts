@@ -1,4 +1,4 @@
-import { Usuario, Papel, Permissao, BeneficiarioBPC, DbStatus, BeneficiariosResumo, AuthUser, LoginResponse } from './types';
+import { Usuario, Papel, Permissao, BeneficiarioBPC, DbStatus, BeneficiariosResumo, AuthUser, LoginResponse, Painel, Indicador } from './types';
 
 const API_BASE = '/api';
 const TOKEN_KEY = 'bpc_recife_jwt_token';
@@ -240,5 +240,18 @@ export async function createBeneficiarioBPC(payload: Omit<BeneficiarioBPC, 'id' 
     body: JSON.stringify(payload)
   }, 'Erro ao cadastrar beneficiário');
   if (!data.success) throw new Error(data.error || 'Erro ao cadastrar beneficiário');
+  return data.data;
+}
+
+export async function getPaineis(): Promise<Painel[]> {
+  const data = await safeFetchJson<{ success: boolean; data: Painel[]; error?: string }>(`${API_BASE}/paineis`, undefined, 'Erro ao buscar painéis');
+  if (!data.success) throw new Error(data.error || 'Erro ao buscar painéis');
+  return data.data;
+}
+
+export async function getIndicadores(painelId?: number): Promise<Indicador[]> {
+  const url = painelId ? `${API_BASE}/indicadores?painel_id=${painelId}` : `${API_BASE}/indicadores`;
+  const data = await safeFetchJson<{ success: boolean; data: Indicador[]; error?: string }>(url, undefined, 'Erro ao buscar indicadores');
+  if (!data.success) throw new Error(data.error || 'Erro ao buscar indicadores');
   return data.data;
 }

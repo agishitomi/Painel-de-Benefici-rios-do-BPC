@@ -119,10 +119,7 @@ export interface Indicador {
   descricao?: string;
   fonte_dado: string;
   tipo_calculo: string;
-  valor_atual: number;
   unidade_medida: string;
-  icone: string;
-  cor: string;
   ordem: number;
   ativo: boolean;
   data_criacao: string;

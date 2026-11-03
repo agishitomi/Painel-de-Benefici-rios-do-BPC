@@ -135,10 +135,7 @@ export const TABLE_DDL_STATEMENTS = [
     descricao TEXT,
     fonte_dado VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS',
     tipo_calculo VARCHAR(50) DEFAULT 'COUNT',
-    valor_atual DECIMAL(14,2) DEFAULT 0,
     unidade_medida VARCHAR(30) DEFAULT 'beneficiários',
-    icone VARCHAR(50) DEFAULT 'Users',
-    cor VARCHAR(50) DEFAULT 'blue',
     ordem INT DEFAULT 1,
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -451,10 +448,7 @@ export interface IndicadorRow {
   descricao: string;
   fonte_dado: string;
   tipo_calculo: string;
-  valor_atual: number;
   unidade_medida: string;
-  icone: string;
-  cor: string;
   ordem: number;
   ativo: boolean;
   data_criacao: string;
@@ -482,10 +476,7 @@ let memoryIndicadores: IndicadorRow[] = [
     descricao: 'Quantitativo consolidado de beneficiários do BPC (Idosos e PCD) ativos e cadastrados no município do Recife.',
     fonte_dado: 'MDS / SAGICAD / INSS - Folha Mensal BPC Recife',
     tipo_calculo: 'COUNT',
-    valor_atual: 8,
     unidade_medida: 'beneficiários',
-    icone: 'Users',
-    cor: 'blue',
     ordem: 1,
     ativo: true,
     data_criacao: '2025-01-01 08:00:00',
@@ -499,10 +490,7 @@ let memoryIndicadores: IndicadorRow[] = [
     descricao: 'Quantitativo de idosos com 65 anos ou mais em situação de vulnerabilidade beneficiários do BPC/LOAS no Recife.',
     fonte_dado: 'INSS / Dataprev - Benefício Espécie 88 (Amparo Social ao Idoso)',
     tipo_calculo: 'COUNT',
-    valor_atual: 4,
     unidade_medida: 'idosos',
-    icone: 'UserCheck',
-    cor: 'indigo',
     ordem: 2,
     ativo: true,
     data_criacao: '2025-01-01 08:00:00',
@@ -516,10 +504,7 @@ let memoryIndicadores: IndicadorRow[] = [
     descricao: 'Quantitativo de pessoas com deficiência física, intelectual, visual ou auditiva atendidas pelo benefício BPC PCD no Recife.',
     fonte_dado: 'INSS / Dataprev - Benefício Espécie 87 (Amparo Social à PCD)',
     tipo_calculo: 'COUNT',
-    valor_atual: 4,
     unidade_medida: 'PCD',
-    icone: 'CreditCard',
-    cor: 'violet',
     ordem: 3,
     ativo: true,
     data_criacao: '2025-01-01 08:00:00',
@@ -642,13 +627,26 @@ export async function runMigrationsAndSeeds(connection: mysql.PoolConnection) {
     // ignore
   }
 
+  // Remover colunas obsoletas caso ainda existam na tabela indicadores
+  for (const obsoleteCol of ['valor_atual', 'icone', 'cor']) {
+    try {
+      const [colCheck]: any = await connection.query(`SHOW COLUMNS FROM indicadores LIKE '${obsoleteCol}'`);
+      if (colCheck && colCheck.length > 0) {
+        await connection.query(`ALTER TABLE indicadores DROP COLUMN \`${obsoleteCol}\``);
+        console.log(`[MySQL Migrations] Coluna ${obsoleteCol} removida com sucesso da tabela indicadores.`);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const [indRows]: any = await connection.query('SELECT COUNT(*) as count FROM indicadores');
   if (Number(indRows[0]?.count || 0) === 0) {
     console.log('[MySQL Migrations] Populando tabela indicadores com 3 indicadores solicitados...');
     for (const ind of memoryIndicadores) {
       await connection.query(
-        'INSERT INTO indicadores (id, painel_id, codigo, titulo, descricao, fonte_dado, tipo_calculo, valor_atual, unidade_medida, icone, cor, ordem, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fonte_dado=VALUES(fonte_dado)',
-        [ind.id, ind.painel_id, ind.codigo, ind.titulo, ind.descricao, ind.fonte_dado, ind.tipo_calculo, ind.valor_atual, ind.unidade_medida, ind.icone, ind.cor, ind.ordem, ind.ativo, ind.data_criacao, ind.data_atualizacao]
+        'INSERT INTO indicadores (id, painel_id, codigo, titulo, descricao, fonte_dado, tipo_calculo, unidade_medida, ordem, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fonte_dado=VALUES(fonte_dado)',
+        [ind.id, ind.painel_id, ind.codigo, ind.titulo, ind.descricao, ind.fonte_dado, ind.tipo_calculo, ind.unidade_medida, ind.ordem, ind.ativo, ind.data_criacao, ind.data_atualizacao]
       );
     }
   } else {
@@ -1445,10 +1443,7 @@ export async function getIndicadores(painelId?: number): Promise<IndicadorRow[]>
         descricao: r.descricao || '',
         fonte_dado: r.fonte_dado || 'MDS / CadÚnico / INSS',
         tipo_calculo: r.tipo_calculo || 'COUNT',
-        valor_atual: Number(r.valor_atual || 0),
         unidade_medida: r.unidade_medida || 'beneficiários',
-        icone: r.icone || 'Users',
-        cor: r.cor || 'blue',
         ordem: Number(r.ordem || 1),
         ativo: Boolean(r.ativo),
         data_criacao: r.data_criacao ? new Date(r.data_criacao).toISOString().replace('T', ' ').substring(0, 19) : '',

@@ -110,10 +110,7 @@ CREATE TABLE IF NOT EXISTS `indicadores` (
   `descricao` TEXT,
   `fonte_dado` VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS',
   `tipo_calculo` VARCHAR(50) DEFAULT 'COUNT',
-  `valor_atual` DECIMAL(14,2) DEFAULT 0,
   `unidade_medida` VARCHAR(30) DEFAULT 'beneficiários',
-  `icone` VARCHAR(50) DEFAULT 'Users',
-  `cor` VARCHAR(50) DEFAULT 'blue',
   `ordem` INT DEFAULT 1,
   `ativo` BOOLEAN DEFAULT TRUE,
   `data_criacao` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -226,7 +223,7 @@ ON DUPLICATE KEY UPDATE `nome`=VALUES(`nome`), `descricao`=VALUES(`descricao`), 
 -- Indicador 1: Total de beneficiários
 -- Indicador 2: Beneficiários idosos
 -- Indicador 3: Beneficiários com deficiência
-INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `fonte_dado`, `tipo_calculo`, `valor_atual`, `unidade_medida`, `icone`, `cor`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`) VALUES
+INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `fonte_dado`, `tipo_calculo`, `unidade_medida`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`) VALUES
 (
   1,
   1,
@@ -235,10 +232,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
   'Quantitativo consolidado de beneficiários do BPC (Idosos e PCD) ativos e cadastrados no município do Recife.',
   'MDS / SAGICAD / INSS - Folha Mensal BPC Recife',
   'COUNT',
-  8.00,
   'beneficiários',
-  'Users',
-  'blue',
   1,
   1,
   '2025-01-01 08:00:00',
@@ -252,10 +246,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
   'Quantitativo de idosos com 65 anos ou mais em situação de vulnerabilidade beneficiários do BPC/LOAS no Recife.',
   'INSS / Dataprev - Benefício Espécie 88 (Amparo Social ao Idoso)',
   'COUNT',
-  4.00,
   'idosos',
-  'UserCheck',
-  'indigo',
   2,
   1,
   '2025-01-01 08:00:00',
@@ -269,10 +260,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
   'Quantitativo de pessoas com deficiência física, intelectual, visual ou auditiva atendidas pelo benefício BPC PCD no Recife.',
   'INSS / Dataprev - Benefício Espécie 87 (Amparo Social à PCD)',
   'COUNT',
-  4.00,
   'PCD',
-  'CreditCard',
-  'violet',
   3,
   1,
   '2025-01-01 08:00:00',
@@ -283,9 +271,6 @@ ON DUPLICATE KEY UPDATE
   `descricao`=VALUES(`descricao`),
   `fonte_dado`=VALUES(`fonte_dado`),
   `tipo_calculo`=VALUES(`tipo_calculo`),
-  `valor_atual`=VALUES(`valor_atual`),
   `unidade_medida`=VALUES(`unidade_medida`),
-  `icone`=VALUES(`icone`),
-  `cor`=VALUES(`cor`),
   `ordem`=VALUES(`ordem`),
   `ativo`=VALUES(`ativo`);

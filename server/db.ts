@@ -130,12 +130,12 @@ export const TABLE_DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS indicadores (
     id INT AUTO_INCREMENT PRIMARY KEY,
     painel_id INT NOT NULL,
-    codigo VARCHAR(50) NOT NULL UNIQUE,
-    nome VARCHAR(150) NOT NULL,
-    descricao TEXT,
+    codigo VARCHAR(120) NOT NULL UNIQUE,
+    nome VARCHAR(160) NOT NULL,
+    descricao VARCHAR(255),
     fonte_dado VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS',
     tipo_calculo VARCHAR(50) DEFAULT 'COUNT',
-    unidade_medida VARCHAR(30) DEFAULT 'beneficiários',
+    unidade_medida VARCHAR(60) DEFAULT 'beneficiários',
     ordem INT DEFAULT 1,
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -632,9 +632,21 @@ export async function runMigrationsAndSeeds(connection: mysql.PoolConnection) {
     const [colTitulo]: any = await connection.query("SHOW COLUMNS FROM indicadores LIKE 'titulo'");
     const [colNome]: any = await connection.query("SHOW COLUMNS FROM indicadores LIKE 'nome'");
     if (colTitulo && colTitulo.length > 0 && (!colNome || colNome.length === 0)) {
-      await connection.query("ALTER TABLE indicadores CHANGE COLUMN `titulo` `nome` VARCHAR(150) NOT NULL");
+      await connection.query("ALTER TABLE indicadores CHANGE COLUMN `titulo` `nome` VARCHAR(160) NOT NULL");
       console.log('[MySQL Migrations] Coluna titulo renomeada com sucesso para nome na tabela indicadores.');
     }
+  } catch {
+    // ignore
+  }
+
+  // Ajustar tamanhos das colunas da tabela indicadores conforme requisitos
+  try {
+    await connection.query("ALTER TABLE indicadores MODIFY COLUMN `codigo` VARCHAR(120) NOT NULL");
+    await connection.query("ALTER TABLE indicadores MODIFY COLUMN `nome` VARCHAR(160) NOT NULL");
+    await connection.query("ALTER TABLE indicadores MODIFY COLUMN `descricao` VARCHAR(255)");
+    await connection.query("ALTER TABLE indicadores MODIFY COLUMN `unidade_medida` VARCHAR(60) DEFAULT 'beneficiários'");
+    await connection.query("ALTER TABLE indicadores MODIFY COLUMN `fonte_dado` VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS'");
+    console.log('[MySQL Migrations] Tamanhos das colunas de indicadores ajustados (codigo:120, nome:160, descricao:255, unidade_medida:60, fonte_dado:255).');
   } catch {
     // ignore
   }

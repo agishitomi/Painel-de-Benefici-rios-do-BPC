@@ -84,7 +84,7 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
         },
         {
           name: 'indicadores',
-          columns: ['id (PK, AUTO_INCREMENT)', 'painel_id (FK -> paineis.id)', 'codigo VARCHAR(50) UNIQUE', 'nome VARCHAR(150)', 'descricao TEXT', 'fonte_dado VARCHAR(255)', 'tipo_calculo VARCHAR(50)', 'unidade_medida VARCHAR(30)', 'ordem INT', 'ativo BOOLEAN', 'data_criacao DATETIME', 'data_atualizacao DATETIME']
+          columns: ['id (PK, AUTO_INCREMENT)', 'painel_id (FK -> paineis.id)', 'codigo VARCHAR(120) UNIQUE', 'nome VARCHAR(160)', 'descricao VARCHAR(255)', 'fonte_dado VARCHAR(255)', 'tipo_calculo VARCHAR(50)', 'unidade_medida VARCHAR(60)', 'ordem INT', 'ativo BOOLEAN', 'data_criacao DATETIME', 'data_atualizacao DATETIME']
         }
       ]
     };

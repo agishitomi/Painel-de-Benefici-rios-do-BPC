@@ -131,7 +131,7 @@ export const TABLE_DDL_STATEMENTS = [
     id INT AUTO_INCREMENT PRIMARY KEY,
     painel_id INT NOT NULL,
     codigo VARCHAR(50) NOT NULL UNIQUE,
-    titulo VARCHAR(150) NOT NULL,
+    nome VARCHAR(150) NOT NULL,
     descricao TEXT,
     fonte_dado VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS',
     tipo_calculo VARCHAR(50) DEFAULT 'COUNT',
@@ -444,7 +444,7 @@ export interface IndicadorRow {
   id: number;
   painel_id: number;
   codigo: string;
-  titulo: string;
+  nome: string;
   descricao: string;
   fonte_dado: string;
   tipo_calculo: string;
@@ -472,7 +472,7 @@ let memoryIndicadores: IndicadorRow[] = [
     id: 1,
     painel_id: 1,
     codigo: 'TOTAL_BENEFICIARIOS',
-    titulo: 'Total de Beneficiários',
+    nome: 'Total de Beneficiários',
     descricao: 'Quantitativo consolidado de beneficiários do BPC (Idosos e PCD) ativos e cadastrados no município do Recife.',
     fonte_dado: 'MDS / SAGICAD / INSS - Folha Mensal BPC Recife',
     tipo_calculo: 'COUNT',
@@ -486,7 +486,7 @@ let memoryIndicadores: IndicadorRow[] = [
     id: 2,
     painel_id: 1,
     codigo: 'BENEFICIARIOS_IDOSOS',
-    titulo: 'Beneficiários Idosos',
+    nome: 'Beneficiários Idosos',
     descricao: 'Quantitativo de idosos com 65 anos ou mais em situação de vulnerabilidade beneficiários do BPC/LOAS no Recife.',
     fonte_dado: 'INSS / Dataprev - Benefício Espécie 88 (Amparo Social ao Idoso)',
     tipo_calculo: 'COUNT',
@@ -500,7 +500,7 @@ let memoryIndicadores: IndicadorRow[] = [
     id: 3,
     painel_id: 1,
     codigo: 'BENEFICIARIOS_DEFICIENCIA',
-    titulo: 'Beneficiários com Deficiência',
+    nome: 'Beneficiários com Deficiência',
     descricao: 'Quantitativo de pessoas com deficiência física, intelectual, visual ou auditiva atendidas pelo benefício BPC PCD no Recife.',
     fonte_dado: 'INSS / Dataprev - Benefício Espécie 87 (Amparo Social à PCD)',
     tipo_calculo: 'COUNT',
@@ -627,6 +627,18 @@ export async function runMigrationsAndSeeds(connection: mysql.PoolConnection) {
     // ignore
   }
 
+  // Renomear coluna titulo para nome caso ainda exista como titulo
+  try {
+    const [colTitulo]: any = await connection.query("SHOW COLUMNS FROM indicadores LIKE 'titulo'");
+    const [colNome]: any = await connection.query("SHOW COLUMNS FROM indicadores LIKE 'nome'");
+    if (colTitulo && colTitulo.length > 0 && (!colNome || colNome.length === 0)) {
+      await connection.query("ALTER TABLE indicadores CHANGE COLUMN `titulo` `nome` VARCHAR(150) NOT NULL");
+      console.log('[MySQL Migrations] Coluna titulo renomeada com sucesso para nome na tabela indicadores.');
+    }
+  } catch {
+    // ignore
+  }
+
   // Remover colunas obsoletas caso ainda existam na tabela indicadores
   for (const obsoleteCol of ['valor_atual', 'icone', 'cor']) {
     try {
@@ -645,16 +657,16 @@ export async function runMigrationsAndSeeds(connection: mysql.PoolConnection) {
     console.log('[MySQL Migrations] Populando tabela indicadores com 3 indicadores solicitados...');
     for (const ind of memoryIndicadores) {
       await connection.query(
-        'INSERT INTO indicadores (id, painel_id, codigo, titulo, descricao, fonte_dado, tipo_calculo, unidade_medida, ordem, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE fonte_dado=VALUES(fonte_dado)',
-        [ind.id, ind.painel_id, ind.codigo, ind.titulo, ind.descricao, ind.fonte_dado, ind.tipo_calculo, ind.unidade_medida, ind.ordem, ind.ativo, ind.data_criacao, ind.data_atualizacao]
+        'INSERT INTO indicadores (id, painel_id, codigo, nome, descricao, fonte_dado, tipo_calculo, unidade_medida, ordem, ativo, data_criacao, data_atualizacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nome=VALUES(nome), fonte_dado=VALUES(fonte_dado)',
+        [ind.id, ind.painel_id, ind.codigo, ind.nome, ind.descricao, ind.fonte_dado, ind.tipo_calculo, ind.unidade_medida, ind.ordem, ind.ativo, ind.data_criacao, ind.data_atualizacao]
       );
     }
   } else {
-    // Atualiza a coluna fonte_dado caso a tabela já existisse
+    // Atualiza nome e fonte_dado caso a tabela já existisse
     for (const ind of memoryIndicadores) {
       await connection.query(
-        'UPDATE indicadores SET fonte_dado = ? WHERE id = ?',
-        [ind.fonte_dado, ind.id]
+        'UPDATE indicadores SET nome = ?, fonte_dado = ? WHERE id = ?',
+        [ind.nome, ind.fonte_dado, ind.id]
       ).catch(() => {});
     }
   }
@@ -1439,7 +1451,7 @@ export async function getIndicadores(painelId?: number): Promise<IndicadorRow[]>
         id: r.id,
         painel_id: r.painel_id,
         codigo: r.codigo,
-        titulo: r.titulo,
+        nome: r.nome || r.titulo || '',
         descricao: r.descricao || '',
         fonte_dado: r.fonte_dado || 'MDS / CadÚnico / INSS',
         tipo_calculo: r.tipo_calculo || 'COUNT',

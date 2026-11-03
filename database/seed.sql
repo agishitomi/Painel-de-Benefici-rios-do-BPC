@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS `indicadores` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `painel_id` INT NOT NULL,
   `codigo` VARCHAR(50) NOT NULL UNIQUE,
-  `titulo` VARCHAR(150) NOT NULL,
+  `nome` VARCHAR(150) NOT NULL,
   `descricao` TEXT,
   `fonte_dado` VARCHAR(255) NOT NULL DEFAULT 'MDS / CadÚnico / INSS',
   `tipo_calculo` VARCHAR(50) DEFAULT 'COUNT',
@@ -223,7 +223,7 @@ ON DUPLICATE KEY UPDATE `nome`=VALUES(`nome`), `descricao`=VALUES(`descricao`), 
 -- Indicador 1: Total de beneficiários
 -- Indicador 2: Beneficiários idosos
 -- Indicador 3: Beneficiários com deficiência
-INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `fonte_dado`, `tipo_calculo`, `unidade_medida`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`) VALUES
+INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `nome`, `descricao`, `fonte_dado`, `tipo_calculo`, `unidade_medida`, `ordem`, `ativo`, `data_criacao`, `data_atualizacao`) VALUES
 (
   1,
   1,
@@ -267,7 +267,7 @@ INSERT INTO `indicadores` (`id`, `painel_id`, `codigo`, `titulo`, `descricao`, `
   '2025-01-01 08:00:00'
 )
 ON DUPLICATE KEY UPDATE 
-  `titulo`=VALUES(`titulo`),
+  `nome`=VALUES(`nome`),
   `descricao`=VALUES(`descricao`),
   `fonte_dado`=VALUES(`fonte_dado`),
   `tipo_calculo`=VALUES(`tipo_calculo`),

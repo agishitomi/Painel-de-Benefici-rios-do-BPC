@@ -115,7 +115,7 @@ export interface Indicador {
   id: number;
   painel_id: number;
   codigo: string;
-  titulo: string;
+  nome: string;
   descricao?: string;
   fonte_dado: string;
   tipo_calculo: string;
